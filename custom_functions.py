@@ -656,8 +656,8 @@ def memory_usage(batch_size, model):
                 single_layer_mem *= s
             shapes_mem_count += single_layer_mem
 
-        trainable_count = np.sum([K.count_params(p) for p in set(model.trainable_weights)])
-        non_trainable_count = np.sum([K.count_params(p) for p in set(model.non_trainable_weights)])
+        trainable_count = np.sum([np.prod(w.shape) for w in model.trainable_weights])
+        non_trainable_count = np.sum([np.prod(w.shape) for w in model.non_trainable_weights])
     else:
         shapes_mem_count = 0
         for l in model.layers:
@@ -668,8 +668,8 @@ def memory_usage(batch_size, model):
                 single_layer_mem *= s
             shapes_mem_count += single_layer_mem
 
-        trainable_count = np.sum([K.count_params(w) for w in model.trainable_weights])
-        non_trainable_count = np.sum([K.count_params(w) for w in model.non_trainable_weights])
+        trainable_count = np.sum([np.prod(w.shape) for w in model.trainable_weights])
+        non_trainable_count = np.sum([np.prod(w.shape) for w in model.non_trainable_weights])
 
     number_size = 4.0
     if K.floatx() == 'float16':
