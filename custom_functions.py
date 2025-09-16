@@ -299,89 +299,53 @@ def save_data_augmentation(X_train, y_train, batch_size=256, file_name=''):
         np.savez_compressed(file_name, X=X_train, y=y_train)
 
 def count_filters(model):
-    import keras
-    #from keras.applications.mobilenet import DepthwiseConv2D
-    from tensorflow.keras.layers import DepthwiseConv2D
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D
     n_filters = 0
-    #Model contains only Conv layers
-    for layer_idx in range(1, len(model.layers)):
-
-        layer = model.get_layer(index=layer_idx)
-
-        if isinstance(layer, keras.layers.Conv2D) and not isinstance(layer, DepthwiseConv2D):
-            config = layer.get_config()
-            n_filters += config['filters']
-
-        if isinstance(layer, DepthwiseConv2D):
-            n_filters += layer.output_shape[-1]
-
-    #Todo: Model contains Conv and Fully Connected layers
-    # for layer_idx in range(1, len(model.get_layer(index=1))):
-    #     layer = model.get_layer(index=1).get_layer(index=layer_idx)
-    #     if isinstance(layer, keras.layers.Conv2D) == True:
-    #         config = layer.get_config()
-    #     n_filters += config['filters']
+    for layer in model.layers[1:]:
+        if isinstance(layer, Conv2D) and not isinstance(layer, DepthwiseConv2D):
+            n_filters += layer.filters
+        elif isinstance(layer, DepthwiseConv2D):
+            n_filters += layer.output.shape[-1]
     return n_filters
 
 def count_filters_layer(model):
-    import keras
-    #from keras.applications.mobilenet import DepthwiseConv2D
-    from tensorflow.keras.layers import DepthwiseConv2D
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D
     n_filters = ''
-    #Model contains only Conv layers
-    for layer_idx in range(1, len(model.layers)):
-
-        layer = model.get_layer(index=layer_idx)
-        if isinstance(layer, keras.layers.Conv2D) and not isinstance(layer, DepthwiseConv2D):
-            config = layer.get_config()
-            n_filters += str(config['filters']) + ' '
-
-        if isinstance(layer, DepthwiseConv2D):
-            n_filters += str(layer.output_shape[-1])
-
-    return n_filters
+    for layer in model.layers[1:]:
+        if isinstance(layer, Conv2D) and not isinstance(layer, DepthwiseConv2D):
+            n_filters += str(layer.filters) + ' '
+        elif isinstance(layer, DepthwiseConv2D):
+            n_filters += str(layer.output.shape[-1]) + ' '
+    return n_filters.strip()
 
 def compute_flops(model):
-    #useful link https://www.programmersought.com/article/27982165768/
-    import keras
-    #from keras.applications.mobilenet import DepthwiseConv2D
-    from tensorflow.keras.layers import DepthwiseConv2D
-    total_flops =0
+    from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Dense
+    total_flops = 0
     flops_per_layer = []
 
-    for layer_idx in range(1, len(model.layers)):
-        layer = model.get_layer(index=layer_idx)
-        if isinstance(layer, DepthwiseConv2D) is True:
-            _, output_map_H, output_map_W, current_layer_depth = layer.output_shape
-
-            _, _, _, previous_layer_depth = layer.input_shape
+    for layer in model.layers[1:]:
+        if isinstance(layer, DepthwiseConv2D):
+            _, H, W, C_out = layer.output.shape.as_list()
+            _, _, _, C_in = layer.input.shape.as_list()
             kernel_H, kernel_W = layer.kernel_size
-
-            #Computed according to https://arxiv.org/pdf/1704.04861.pdf Eq.(5)
-            flops = (kernel_H * kernel_W * previous_layer_depth * output_map_H * output_map_W) + (previous_layer_depth * current_layer_depth * output_map_W * output_map_H)
+            flops = (kernel_H * kernel_W * C_in * H * W) + (C_in * C_out * H * W)
             total_flops += flops
             flops_per_layer.append(flops)
-
-        elif isinstance(layer, keras.layers.Conv2D) is True:
-            _, output_map_H, output_map_W, current_layer_depth = layer.output_shape
-
-            _, _, _, previous_layer_depth = layer.input_shape
+        elif isinstance(layer, Conv2D):
+            _, H, W, C_out = layer.output.shape.as_list()
+            _, _, _, C_in = layer.input.shape.as_list()
             kernel_H, kernel_W = layer.kernel_size
-
-            flops = output_map_H * output_map_W * previous_layer_depth * current_layer_depth * kernel_H * kernel_W
+            flops = H * W * C_in * C_out * kernel_H * kernel_W
             total_flops += flops
             flops_per_layer.append(flops)
-
-        if isinstance(layer, keras.layers.Dense) is True:
-            _, current_layer_depth = layer.output_shape
-
-            _, previous_layer_depth = layer.input_shape
-
-            flops = current_layer_depth * previous_layer_depth
+        elif isinstance(layer, Dense):
+            units_out = layer.units
+            units_in = layer.input.shape[-1]
+            flops = units_in * units_out
             total_flops += flops
             flops_per_layer.append(flops)
-
     return total_flops, flops_per_layer
+
 
 def meanLattency(model, X_test):
     
@@ -692,8 +656,8 @@ def memory_usage(batch_size, model):
                 single_layer_mem *= s
             shapes_mem_count += single_layer_mem
 
-        trainable_count = np.sum([np.prod(w.shape) for w in model.trainable_weights])
-        non_trainable_count = np.sum([np.prod(w.shape) for w in model.non_trainable_weights])
+        trainable_count = np.sum([K.count_params(p) for p in set(model.trainable_weights)])
+        non_trainable_count = np.sum([K.count_params(p) for p in set(model.non_trainable_weights)])
     else:
         shapes_mem_count = 0
         for l in model.layers:
@@ -704,8 +668,8 @@ def memory_usage(batch_size, model):
                 single_layer_mem *= s
             shapes_mem_count += single_layer_mem
 
-        trainable_count = np.sum([np.prod(w.shape) for w in model.trainable_weights])
-        non_trainable_count = np.sum([np.prod(w.shape) for w in model.non_trainable_weights])
+        trainable_count = np.sum([K.count_params(w) for w in model.trainable_weights])
+        non_trainable_count = np.sum([K.count_params(w) for w in model.non_trainable_weights])
 
     number_size = 4.0
     if K.floatx() == 'float16':
