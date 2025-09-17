@@ -41,4 +41,16 @@ def pruneByFilter(model, criteria, p_filter):
     
     return  rf.rebuild_network(model, scores, p_filter)
              
+def statistics(model):
+    n_params = model.count_params()
+    
+    acc = accuracy_score(np.argmax(y_test, axis=1), np.argmax(model.predict(X_test, verbose=0), axis=1))
+    n_filters = func.count_filters(model)
+    flops, _ = func.compute_flops(model)
+    blocks = rl.count_blocks(model)
+
+    memory = func.memory_usage(1, model)
+
+    print('Accuracy [{}] Blocks {} Number of Parameters [{}] Number of Filters [{}] FLOPS [{}] '
+        'Memory [{:.6f}]'.format(acc, blocks, n_params, n_filters, flops, memory), flush=True)
 
