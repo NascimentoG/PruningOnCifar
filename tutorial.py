@@ -43,9 +43,9 @@ def pruneByFilter(model, criteria, p_filter):
     allowed_layers_filters = rf.layer_to_prune_filters(model)
     numberToFilterToRemove = int(func.count_filters(model)*p_filter)
     filter_method = cf.criteria(criteria)
-    scores = filter_method.scores(model, X_train, y_train, allowed_layers_filters, numberToFilterToRemove)    
+    scores = filter_method.scores(model, X_train, y_train, allowed_layers_filters)    
     
-    return  rf.rebuild_network(model, scores, p_filter)
+    return  rf.rebuild_network(model, scores, p_filter, numberToFilterToRemove)
              
 def statistics(model):
     n_params = model.count_params()
