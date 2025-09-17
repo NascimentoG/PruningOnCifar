@@ -27,6 +27,11 @@ from sklearn.metrics._classification import accuracy_score
 
 X_train, y_train, X_test, y_test = func.cifar_resnet_data(debug=False)
 
+architecture_name = 'ResNet32'
+
+rf.architecture_name = architecture_name
+rl.architecture_name = architecture_name
+
 def pruneByLayer(model, criteria, p_layer):
     allowed_layers = rl.blocks_to_prune(model)
     layer_method = cl.criteria(criteria)
