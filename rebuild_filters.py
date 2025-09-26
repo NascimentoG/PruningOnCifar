@@ -206,7 +206,6 @@ def allowed_layers_resnet(model):
     if available_filters == 0:
         isFiltersAvailable = False
         
-    print(f"Numero de filtros nas camadas permitidas (PODA POR FILTRO) {available_filters} em {len(allowed_layers)}")
     return allowed_layers
 
 def idx_to_conv2Didx(model, indices):
@@ -263,7 +262,6 @@ def rebuild_network(model, scores, p_filter, totalFiltersToRemove = 0, wasPfilte
             
     if len(layerSelectedList) == 0:
         isFiltersAvailable = False
-        print(f"Faltam remover {totalFiltersToRemove - numberFiltersRemoved} filtros,\n Mas o numero de camadas com mais de um filtro e {len(layerSelectedList)}")
         
     scores = [x for x in zip(allowed_layers, filtersToRemove)]
     
